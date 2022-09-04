@@ -5,4 +5,4 @@ Built while following along with Luca Palmieri's Zero To Production in Rust book
 
 Run the project with `cargo run`
 
-Run the tests with `cargo test`
+Run the integration tests with `cargo test`
