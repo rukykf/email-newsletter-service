@@ -4,7 +4,13 @@ use secrecy::Secret;
 #[derive(serde::Deserialize)]
 pub struct Settings {
     pub database: DatabaseSettings,
-    pub application_port: u16,
+    pub application: ApplicationSettings,
+}
+
+#[derive(serde::Deserialize)]
+pub struct ApplicationSettings {
+    pub port: u16,
+    pub host: String,
 }
 
 #[derive(serde::Deserialize)]
@@ -46,5 +52,6 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
     // Add configuration values from a filed named `configuration`
     settings.merge(config::File::with_name("configuration"))?;
 
+    // RE-READ: Why does this convert to Settings seemingly automatically
     settings.try_into()
 }
