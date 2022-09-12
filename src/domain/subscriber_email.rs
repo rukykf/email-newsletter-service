@@ -13,3 +13,14 @@ impl AsRef<str> for SubscriberEmail {
         &self.0
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::SubscriberEmail;
+    use claim::assert_err;
+
+    fn empty_string_is_rejected() {
+        let email = "".to_string();
+        assert_err!(SubscriberEmail::parse(email))
+    }
+}
