@@ -2,7 +2,6 @@ use once_cell::sync::Lazy;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::net::TcpListener;
 use uuid::Uuid;
-use validator::Validator::Email;
 use zero2prod::configuration;
 use zero2prod::configuration::DatabaseSettings;
 use zero2prod::email_client::EmailClient;
