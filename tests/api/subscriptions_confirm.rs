@@ -1,9 +1,6 @@
 use crate::helpers::spawn_app;
-use reqwest::Url;
-use tokio::spawn;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
-use zero2prod::routes::confirm;
 
 #[tokio::test]
 async fn confirmations_without_token_are_rejected_with_a_400() {
