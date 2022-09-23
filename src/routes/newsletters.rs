@@ -1,6 +1,7 @@
 use crate::domain::SubscriberEmail;
 use crate::email_client::EmailClient;
 use crate::routes::error_chain_fmt;
+use crate::telemetry::spawn_blocking_with_tracing;
 use actix_web::http::header::{HeaderMap, HeaderValue};
 use actix_web::http::StatusCode;
 use actix_web::web;
@@ -8,12 +9,10 @@ use actix_web::HttpRequest;
 use actix_web::HttpResponse;
 use actix_web::ResponseError;
 use anyhow::Context;
-use argon2::PasswordHasher;
 use argon2::{Argon2, PasswordHash, PasswordVerifier};
 use reqwest::header;
 use secrecy::ExposeSecret;
 use secrecy::Secret;
-use sha3::Digest;
 use sqlx::PgPool;
 
 #[derive(serde::Deserialize)]
@@ -116,7 +115,7 @@ async fn validate_credentials(
         .map_err(PublishError::UnexpectedError)?
         .ok_or_else(|| PublishError::AuthError(anyhow::anyhow!("Unknown username.")))?;
 
-    tokio::task::spawn_blocking(move || {
+    spawn_blocking_with_tracing(move || {
         verify_password_hash(expected_password_hash, credentials.password)
     })
     .await
