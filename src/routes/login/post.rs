@@ -1,12 +1,14 @@
 use crate::authentication::{validate_credentials, AuthError, Credentials};
 use crate::routes::error_chain_fmt;
+use crate::startup::HmacSecret;
+use actix_web::error::InternalError;
 use actix_web::error::ParseError::Status;
 use actix_web::http::StatusCode;
 use actix_web::HttpResponse;
 use actix_web::{web, ResponseError};
 use hmac::{Hmac, Mac};
 use reqwest::header::LOCATION;
-use secrecy::Secret;
+use secrecy::{ExposeSecret, Secret};
 use sqlx::postgres::PgSeverity::Log;
 use sqlx::PgPool;
 use std::fmt::Formatter;
@@ -53,11 +55,12 @@ impl ResponseError for LoginError {
     }
 }
 
-#[tracing::instrument(skip(form, pool), fields(username = tracing::field::Empty, user_id = tracing::field::Empty))]
+#[tracing::instrument(skip(form, pool, secret), fields(username = tracing::field::Empty, user_id = tracing::field::Empty))]
 pub async fn login(
     form: web::Form<FormData>,
     pool: web::Data<PgPool>,
-) -> Result<HttpResponse, LoginError> {
+    secret: web::Data<HmacSecret>,
+) -> Result<HttpResponse, InternalError<LoginError>> {
     let credentials = Credentials {
         username: form.0.username,
         password: form.0.password,
@@ -65,16 +68,24 @@ pub async fn login(
 
     tracing::Span::current().record("username", &tracing::field::display(&credentials.username));
 
-    let user_id = validate_credentials(credentials, &pool)
-        .await
-        .map_err(|e| match e {
-            AuthError::InvalidCredentials(_) => LoginError::AuthError(e.into()),
-            AuthError::UnexpectedError(_) => LoginError::UnexpectedError(e.into()),
-        })?;
+    match validate_credentials(credentials, &pool).await {
+        Ok(user_id) => {
+            tracing::Span::current().record("user_id", &tracing::field::display(&user_id));
 
-    tracing::Span::current().record("user_id", &tracing::field::display(&user_id));
+            Ok(HttpResponse::SeeOther()
+                .insert_header((LOCATION, "/"))
+                .finish())
+        }
+        Err(e) => {
+            let e = match e {
+                AuthError::InvalidCredentials(_) => LoginError::AuthError(e.into()),
+                AuthError::UnexpectedError(_) => LoginError::UnexpectedError(e.into()),
+            };
 
-    Ok(HttpResponse::SeeOther()
-        .insert_header((LOCATION, "/"))
-        .finish())
+            let response = HttpResponse::SeeOther()
+                .insert_header((LOCATION, "/login"))
+                .finish();
+            Err(InternalError::from_response(e, response))
+        }
+    }
 }

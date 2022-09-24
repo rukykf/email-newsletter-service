@@ -102,7 +102,7 @@ pub async fn publish_newsletter(
             Err(error) => {
                 tracing::warn!(
                     error.cause_chain = ?error,
-                    "Skipping a confirmed subsscriber. \
+                    "Skipping a confirmed subscriber. \
                     Their stored contact details are invalid"
                 )
             }
